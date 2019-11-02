@@ -185,3 +185,227 @@ MATCH (m:Movie) WHERE m.title = 'Forrest Gump' RETURN m;
 MATCH (p:Person) WHERE p.name = 'Robin Wright' REMOVE p.birthPlace;
 // Retrieve the Robin Wright node to confirm that the property has been removed.
 MATCH (p:Person) WHERE p.name = 'Robin Wright' RETURN p;
+
+
+
+// 9
+//Create the ACTED_IN relationship between the actors, Robin Wright, Tom Hanks, and Gary Sinise and the movie, Forrest Gump.
+MATCH (m:Movie) WHERE m.title = 'Forrest Gump'
+MATCH (p:Person) WHERE p.name = 'Tom Hanks' OR p.name = 'Robin Wright' OR p.name = 'Gary Sinise'
+CREATE (p)-[:ACTED_IN]->(m);
+// Create the DIRECTED relationship between Robert Zemeckis and the movie, Forrest Gump.
+MATCH (m:Movie) WHERE m.title = 'Forrest Gump'
+MATCH (p:Person) WHERE p.name = 'Robert Zemeckis'
+CREATE (p)-[:DIRECTED]->(m);
+// Create a new relationship, HELPED from Tom Hanks to Gary Sinise.
+MATCH (p1:Person) WHERE p1.name = 'Tom Hanks'
+MATCH (p2:Person) WHERE p2.name = 'Gary Sinise'
+CREATE (p1)-[:HELPED]->(p2);
+// Write a Cypher query to return all nodes connected to the movie, Forrest Gump, along with their relationships.
+MATCH (p:Person)-[rel]-(m:Movie) WHERE m.title = 'Forrest Gump' RETURN p, rel, m;
+// Add the roles property to the three ACTED_IN relationships that you just created to the movie, Forrest Gump using
+// this information: Tom Hanks played the role, Forrest Gump. Robin Wright played the role, Jenny Curran. Gary Sinise
+// played the role, Lieutenant Dan Taylor.
+MATCH (p:Person)-[rel:ACTED_IN]->(m:Movie) WHERE m.title = 'Forrest Gump'
+SET rel.roles =
+CASE p.name
+  WHEN 'Tom Hanks' THEN ['Forrest Gump']
+  WHEN 'Robin Wright' THEN ['Jenny Curran']
+  WHEN 'Gary Sinise' THEN ['Lieutenant Dan Taylor']
+END;
+// Add a new property, research to the HELPED relationship between Tom Hanks and Gary Sinise and set this property’s value to war history.
+MATCH (p1:Person)-[rel:HELPED]->(p2:Person) WHERE p1.name = 'Tom Hanks' AND p2.name = 'Gary Sinise'
+SET rel.research = 'war history';
+// View the current list of property keys in the graph.
+CALL db.propertyKeys();
+// View the current schema of the graph.
+CALL db.schema.visualization();
+// Query the graph to return the names and roles of actors in the movie, Forrest Gump.
+MATCH (p:Person)-[rel:ACTED_IN]->(m:Movie) WHERE m.title = 'Forrest Gump' RETURN p.name, rel.roles;
+// Query the graph to retrieve information about any HELPED relationships.
+MATCH (p1:Person)-[rel:HELPED]-(p2:Person) RETURN p1.name, rel, p2.name;
+// Modify the role that Gary Sinise played in the movie, Forrest Gump from Lieutenant Dan Taylor to Lt. Dan Taylor.
+MATCH (p:Person)-[rel:ACTED_IN]->(m:Movie) WHERE m.title = 'Forrest Gump' AND p.name = 'Gary Sinise'
+SET rel.roles =['Lt. Dan Taylor'];
+// Remove the research property from the HELPED relationship from Tom Hanks to Gary Sinise.
+MATCH (p1:Person)-[rel:HELPED]->(p2:Person) WHERE p1.name = 'Tom Hanks' AND p2.name = 'Gary Sinise' REMOVE rel.research;
+// Query the graph to confirm that your modifications were made to the graph.
+MATCH (p:Person)-[rel:ACTED_IN]->(m:Movie) WHERE m.title = 'Forrest Gump' RETURN p, rel, m;
+
+
+
+// 10
+// Delete the HELPED relationship from the graph.
+MATCH (:Person)-[rel:HELPED]-(:Person) DELETE rel;
+// Query the graph to confirm that the relationship no longer exists.
+MATCH (:Person)-[rel:HELPED]-(:Person) RETURN rel;
+// Query the graph to display Forrest Gump and all of its relationships.
+MATCH (p:Person)-[rel]-(m:Movie) WHERE m.title = 'Forrest Gump' RETURN p, rel, m;
+// Try deleting the Forrest Gump node without detaching its relationships.
+MATCH (m:Movie) WHERE m.title = 'Forrest Gump' DELETE m;
+// Delete Forrest Gump, along with its relationships in the graph.
+MATCH (m:Movie) WHERE m.title = 'Forrest Gump' DETACH DELETE m;
+// Query the graph to confirm that the Forrest Gump node has been deleted.
+MATCH (p:Person)-[rel]-(m:Movie) WHERE m.title = 'Forrest Gump' RETURN p, rel, m;
+
+
+
+// 11
+// Use MERGE to create (ON CREATE) a node of type Movie with the title property, Forrest Gump. If created, set the released property to 1994.
+MERGE (m:Movie {title: 'Forrest Gump'}) ON CREATE SET m.released = 1994 RETURN m;
+// Use MERGE to update (ON MATCH) a node of type Movie with the title property, Forrest Gump. If found, set the tagline
+// property to "Life is like a box of chocolates…​you never know what you’re gonna get.".
+MERGE (m:Movie {title: 'Forrest Gump'}) ON CREATE SET m.released = 1994
+ON MATCH SET m.tagline = "Life is like a box of chocolates...you never know what you're gonna get." RETURN m;
+// Use MERGE to create (ON CREATE) a node of type Production with the title property, Forrest Gump. If created, set the
+// property year to the value 1994.
+MERGE (p:Production {title: 'Forrest Gump'}) ON CREATE SET p.year = 1994 RETURN p;
+// Query the graph to find labels for nodes with the title property, Forrest Gump.
+MATCH (m) WHERE m.title = 'Forrest Gump' RETURN  labels(m);
+// Use MERGE to update (ON MATCH) the existing Production node for Forrest Gump to add the company property with a value of Paramount Pictures.
+MERGE (p:Production {title: 'Forrest Gump'}) ON MATCH SET p.company = 'Paramount Pictures' RETURN p;
+// Use MERGE to add the OlderMovie label to the movie, Forrest Gump.
+MERGE (m:Movie {title: 'Forrest Gump'}) ON MATCH SET m:OlderMovie RETURN labels(m);
+// Execute the following Cypher statement that uses MERGE to create two nodes and a single relationship
+MERGE (p:Person {name: 'Robert Zemeckis'})-[:DIRECTED]->(m {title: 'Forrest Gump'});
+// It should do nothing. A best practice is to always use MERGE to create relationships to ensure that there will be no duplication in the graph.
+MERGE (p:Person {name: 'Robert Zemeckis'})-[:DIRECTED]->(m {title: 'Forrest Gump'})
+// Delete this Person node, along with its relationships.
+MATCH (p:Person {name: 'Robert Zemeckis'})--() WHERE NOT exists (p.born) DETACH DELETE p;
+// Find the correct Forrest Gump node to delete by executing this statement:
+MATCH (m) WHERE m.title = 'Forrest Gump' AND labels(m) = [] RETURN m, labels(m);
+// Delete this Forrest Gump node.
+MATCH (m) WHERE m.title = 'Forrest Gump' AND labels(m) = [] DETACH DELETE m;
+// Use MERGE to create the DIRECTED relationship between Robert Zemeckis and the Movie, Forrest Gump.
+MATCH (p:Person), (m:Movie) WHERE p.name = 'Robert Zemeckis' AND m.title = 'Forrest Gump' MERGE (p)-[:DIRECTED]->(m);
+// Use MERGE to create the ACTED_IN relationship between the actors, Tom Hanks, Gary Sinise, and Robin Wright and the Movie, Forrest Gump.
+MATCH (p:Person), (m:Movie) WHERE p.name IN ['Tom Hanks','Gary Sinise', 'Robin Wright'] AND m.title = 'Forrest Gump'
+MERGE (p)-[:ACTED_IN]->(m);
+// Modify the relationship property, role for their roles in Forrest Gump:
+//Tom Hanks is Forrest Gump
+//Gary Sinise is Lt. Dan Taylor
+//Robin Wright is Jenny Curran
+MATCH (p:Person)-[rel:ACTED_IN]->(m:Movie) WHERE m.title = 'Forrest Gump'
+SET rel.roles =
+CASE p.name
+  WHEN 'Tom Hanks' THEN ['Forrest Gump']
+  WHEN 'Robin Wright' THEN ['Jenny Curran']
+  WHEN 'Gary Sinise' THEN ['Lt. Dan Taylor']
+END;
+
+
+
+// 12
+// Write and execute a Cypher query that returns the names of people who reviewed movies and the actors in these movies
+// by returning the name of the reviewer, the movie title reviewed, the release date of the movie, the rating given to
+// the movie by the reviewer, and the list of actors for that particular movie.
+MATCH (r:Person)-[rel:REVIEWED]->(m:Movie)<-[:ACTED_IN]-(a:Person)
+RETURN  DISTINCT r.name, m.title, m.released, rel.rating, collect(a.name);
+// Modify the Cypher query you just wrote to filter by the year parameter.
+// :param year => 2006
+MATCH (r:Person)-[rel:REVIEWED]->(m:Movie)<-[:ACTED_IN]-(a:Person) WHERE m.released = $year
+RETURN  DISTINCT r.name, m.title, m.released, rel.rating, collect(a.name);
+// Modify the query you wrote previously to also filter the result returned by the rating for the movie.
+// :params {year: 2006, ratingValue: 65}
+MATCH (r:Person)-[rel:REVIEWED]->(m:Movie)<-[:ACTED_IN]-(a:Person) WHERE m.released = $year AND rel.rating > $ratingValue
+RETURN  DISTINCT r.name, m.title, m.released, rel.rating, collect(a.name)
+
+
+
+// 13
+// For this Part of the exercise, you will use the query that you wrote previously using Cypher parameters. It assumes
+// that you have set the year and ratingValue Cypher parameters:
+// :params {year: 2006, ratingValue: 65}
+MATCH (r:Person)-[rel:REVIEWED]->(m:Movie)<-[:ACTED_IN]-(a:Person) WHERE m.released = $year AND rel.rating > $ratingValue
+RETURN  DISTINCT r.name, m.title, m.released, rel.rating, collect(a.name);
+// View the query plan for this Cypher statement.
+EXPLAIN MATCH (r:Person)-[rel:REVIEWED]->(m:Movie)<-[:ACTED_IN]-(a:Person) WHERE m.released = $year AND rel.rating > $ratingValue
+RETURN  DISTINCT r.name, m.title, m.released, rel.rating, collect(a.name);
+// View the metrics for the query when the previous statement executes.
+PROFILE MATCH (r:Person)-[rel:REVIEWED]->(m:Movie)<-[:ACTED_IN]-(a:Person) WHERE m.released = $year AND rel.rating > $ratingValue
+RETURN  DISTINCT r.name, m.title, m.released, rel.rating, collect(a.name);
+// Remove the labels from the nodes and relationships in the query and again view the metrics. Compare the db hits from
+// the previous version of the statement.
+PROFILE MATCH (r)-[rel]->(m)<-[:ACTED_IN]-(a) WHERE m.released = $year AND rel.rating > $ratingValue
+RETURN  DISTINCT r.name, m.title, m.released, rel.rating, collect(a.name);
+
+
+// 14
+// Add a uniqueness constraint to the Person nodes in the graph.
+CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE;
+// Add Tom Hanks to the graph.  The result returned error.
+CREATE (:Person {name: 'Tom Hanks'})
+// Attempt to add an existence constraint to the Person nodes in the graph. Error: `Person` must have the property `born`.
+CREATE CONSTRAINT ON (p:Person) ASSERT exists(p.born)
+// Update the existing Person nodes so that you set the born property to 0 for any nodes that do not exist.
+MATCH (p:Person) WHERE NOT exists(p.born) SET p.born = 0;
+// Add the existence constraint to the graph for the born property.
+CREATE CONSTRAINT ON (p:Person) ASSERT exists(p.born);
+// Add Sean Penn to the graph where you do not specify a value for born.
+CREATE (:Person {name: 'Sean Penn'});
+// Add an existence constraint to the ACTED_IN relationship in the graph.
+CREATE CONSTRAINT ON ()-[r:ACTED_IN]-() ASSERT exists(r.roles);
+// Add an ACTED_IN relationship from the person, Emil Eifrem to the movie, Forrest Gump where the roles property is not set.
+MATCH (p:Person), (m:Movie) WHERE p.name = 'Emil Eifrem' AND m.title = 'Forrest Gump' MERGE (p)-[:ACTED_IN]->(m);
+//
+DROP CONSTRAINT ON (m:Movie) ASSERT m.title IS UNIQUE;
+// Add a node key to the graph that will ensure that the combined values of title and released are unique for all Movie nodes.
+CREATE CONSTRAINT ON (m:Movie) ASSERT (m.title, m.released) IS NODE KEY;
+// Add the movie, Back to the Future with a released value of 1985 and a tagline value of Our future..
+CREATE (:Movie {title: 'Back to the Future', released: 1985, tagline: 'Our future.'});
+// Add the movie, Back to the Future with a released value of 2018 and a tagline value of The future is ours..
+CREATE (:Movie {title: 'Back to the Future', released: 2018, tagline: 'The future is ours.'});
+// Try adding the 2018 movie again.
+CREATE (:Movie {title: 'Back to the Future', released: 2018, tagline: 'The future is ours.'});
+// Display the list of constraints defined in the graph.
+CALL db.constraints()
+// Drop the constraint that requires the ACTED_IN relationship to have a property, roles.
+DROP CONSTRAINT ON ()-[ acted_in:ACTED_IN ]-() ASSERT exists(acted_in.roles)
+
+
+// 15
+// Create a single-property index on the born property of a Person node.
+CREATE INDEX ON :Person(born)
+// View the indexes defined for the graph.
+CALL db.indexes()
+// Drop the single-property index you just created for the born property of the Person nodes.
+DROP INDEX ON :Person(born)
+
+
+// 16
+// Write the Cypher statement to read the actor data from a file.
+LOAD CSV WITH HEADERS FROM 'http://data.neo4j.com/intro-neo4j/actors.csv' AS line
+RETURN line.id, line.name, line.birthYear;
+// Read the data and return it, ensuring that the data returned is properly formatted.
+LOAD CSV WITH HEADERS FROM 'http://data.neo4j.com/intro-neo4j/actors.csv' AS line
+RETURN line.id, line.name, toInteger(trim(line.birthYear));
+// Load the data into your graph.
+// Hint: Use MERGE because the graph already contains some of these actors.
+LOAD CSV WITH HEADERS FROM 'http://data.neo4j.com/intro-neo4j/actors.csv' AS line
+MERGE (actor:Person {name: line.name})
+ON CREATE SET actor.born = toInteger(trim(line.birthYear)), actor.actorId = line.id
+ON MATCH SET actor.actorId = line.id;
+// Write the Cypher statement to read the movie data from a file.
+LOAD CSV WITH HEADERS FROM 'http://data.neo4j.com/intro-neo4j/movies.csv' AS line
+RETURN line.id, line.title, line.year, line.tagLine;
+// Read the data and return it, ensuring that the data returned is properly formatted.
+LOAD CSV WITH HEADERS FROM 'http://data.neo4j.com/intro-neo4j/movies.csv' AS line
+RETURN line.id, line.title, toInteger(line.year), trim(line.tagLine);
+// Load the data into your graph.
+// Hint: Use MERGE because the graph already contains some of these movies.
+LOAD CSV WITH HEADERS FROM 'http://data.neo4j.com/intro-neo4j/movies.csv' AS line
+MERGE (m:Movie {title: line.title})
+ON CREATE SET m.released = toInteger(trim(line.year)),  m.movieId = line.id,  m.tagline = line.tagLine
+ON MATCH SET m.movieId = line.id;
+// Write the Cypher statement to read the relationship data from a file.
+LOAD CSV WITH HEADERS FROM 'http://data.neo4j.com/intro-neo4j/roles.csv' AS line FIELDTERMINATOR ';'
+RETURN line.personId, line.movieId, line.Role;
+// Read the data and return it, ensuring that the data returned is properly formatted.
+LOAD CSV WITH HEADERS FROM 'http://data.neo4j.com/intro-neo4j/roles.csv' AS line FIELDTERMINATOR ';'
+RETURN line.personId, line.movieId, split(line.Role,',');
+
+// Load the data into your graph.
+LOAD CSV WITH HEADERS FROM 'http://data.neo4j.com/intro-neo4j/roles.csv' AS line FIELDTERMINATOR ';'
+MATCH (movie:Movie { movieId: line.movieId })
+MATCH (person:Person { actorId: line.personId })
+MERGE (person)-[:ACTED_IN { roles: split(line.Role,',')}]->(movie)
